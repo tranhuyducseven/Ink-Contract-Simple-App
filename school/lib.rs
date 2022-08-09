@@ -1,40 +1,60 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use ink_lang as ink;
+use ink_prelude::string::String;
 
 #[ink::contract]
 mod school {
+    use super::*;
     use ink_storage::traits::SpreadAllocate;
-    enum Role {
+    use ink_storage::traits::{PackedLayout, SpreadLayout};
+    pub type Id = u32;
+    #[derive(
+        Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode, SpreadLayout, PackedLayout,
+    )]
+    #[cfg_attr(
+        feature = "std",
+        derive(::scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    )]
+    pub enum Role {
         Admin,
         Student,
     }
+    #[derive(
+        Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, SpreadLayout, PackedLayout,
+    )]
+    #[cfg_attr(
+        feature = "std",
+        derive(::scale_info::TypeInfo, ::ink_storage::traits::StorageLayout)
+    )]
     pub struct Student {
-        name: String,
-        age: i32,
-        role: Role,
+        pub name: String,
+        pub age: u32,
+        pub id: Id,
+        pub role: Role,
     }
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct School {
-        list_students: ink_storage::Mapping<AccountId, Student>,
+        list_students: ink_storage::Mapping<Id, Student>,
     }
 
     impl School {
         #[ink(constructor)]
-        pub fn new(name: String, age: i32) -> Self {
+        pub fn new(name: String, age: u32, id: Id) -> Self {
             // This call is required in order to correctly initialize the
             // `Mapping`s of our contract.
             ink_lang::utils::initialize_contract(|contract: &mut Self| {
-                let caller = Self::env().caller();
+                let _caller = Self::env().caller();
                 let admin = Student {
                     name,
                     age,
+                    id,
                     role: Role::Admin,
                 };
 
-                contract.list_students.insert(&caller, &admin);
+                contract.list_students.insert(&id, &admin);
             })
         }
 
@@ -47,33 +67,39 @@ mod school {
 
         // Grab the number at the caller's AccountID, if it exists
         #[ink(message)]
-        pub fn get(&self) -> Student {
-            let caller = Self::env().caller();
-            self.list_students.get(&caller)
+        pub fn get(&self, id: u32) -> Student {
+            self.list_students.get(&id).unwrap()
         }
     }
 }
+#[cfg(test)]
+mod tests {
+    /// Imports all the definitions from the outer scope so we can use them here.
+    use crate::school::Role;
+    use crate::school::School;
+    use crate::school::Student;
 
-// mod tests {
-//     /// Imports all the definitions from the outer scope so we can use them here.
-//     use super::*;
-//
-//     /// Imports `ink_lang` so we can use `#[ink::test]`.
-//     use ink_lang as ink;
-//
-//     /// We test if the default constructor does its job.
-//     #[ink::test]
-//     fn default_works() {
-//         let school = School::default();
-//         assert_eq!(bank.get(), false);
-//     }
-//
-//     /// We test a simple use case of our contract.
-//     #[ink::test]
-//     fn it_works() {
-//         let mut school = School::new(false);
-//         assert_eq!(school.get(), false);
-//         bank.flip();
-//         assert_eq!(school.get(), true);
-//     }
-// }
+    /// Imports `ink_lang` so we can use `#[ink::test]`.
+    use ink_lang as ink;
+
+    //    /// We test if the default constructor does its job.
+    #[ink::test]
+    fn default_works() {
+        let school = School::new(String::from("Huy Duc"), 18, 1);
+        let student = Student {
+            name: "Huy Duc".to_string(),
+            age: 18,
+            id: 1,
+            role: Role::Admin,
+        };
+        assert_eq!(school.get(1), student);
+    }
+
+    //#[ink::test]
+    //fn it_works() {
+    //    let mut school = School::new(false);
+    //    assert_eq!(school.get(), false);
+    //    bank.flip();
+    //    assert_eq!(school.get(), true);
+    //}
+}
