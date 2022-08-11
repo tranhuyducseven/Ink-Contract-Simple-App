@@ -94,6 +94,18 @@ mod school {
             self.list_students.remove(id);
             self.list_ids.retain(|&x| x != id)
         }
+
+        #[ink(message)]
+        pub fn edit_student(&mut self, id: Id, name: String, age: u32) {
+            let mut student = self.get_student(id);
+            let caller = Self::env().caller();
+            student.name = name;
+            student.age = age;
+            student.author = caller;
+            self.remove_student(id);
+            self.list_students.insert(&id, &student);
+            self.list_ids.push(id);
+        }
     }
 }
 // #[cfg(test)]
