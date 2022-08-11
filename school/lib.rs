@@ -2,6 +2,7 @@
 
 use ink_lang as ink;
 use ink_prelude::string::String;
+use ink_prelude::vec::Vec;
 
 #[ink::contract]
 mod school {
@@ -9,6 +10,7 @@ mod school {
     use ink_storage::traits::SpreadAllocate;
     use ink_storage::traits::{PackedLayout, SpreadLayout};
     pub type Id = u32;
+
     #[derive(
         Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode, SpreadLayout, PackedLayout,
     )]
@@ -18,7 +20,7 @@ mod school {
     )]
     pub enum Role {
         Admin,
-        Student,
+        Member,
     }
     #[derive(
         Debug, Clone, PartialEq, Eq, scale::Encode, scale::Decode, SpreadLayout, PackedLayout,
@@ -32,74 +34,92 @@ mod school {
         pub age: u32,
         pub id: Id,
         pub role: Role,
+        pub author: AccountId,
     }
 
     #[ink(storage)]
     #[derive(SpreadAllocate)]
     pub struct School {
         list_students: ink_storage::Mapping<Id, Student>,
+        list_ids: Vec<Id>,
     }
 
     impl School {
         #[ink(constructor)]
         pub fn new(name: String, age: u32, id: Id) -> Self {
-            // This call is required in order to correctly initialize the
-            // `Mapping`s of our contract.
             ink_lang::utils::initialize_contract(|contract: &mut Self| {
-                let _caller = Self::env().caller();
+                let caller = Self::env().caller();
                 let admin = Student {
                     name,
                     age,
                     id,
                     role: Role::Admin,
+                    author: caller,
                 };
 
                 contract.list_students.insert(&id, &admin);
+                contract.list_ids.push(id);
             })
         }
-
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            // Even though we're not explicitly initializing the `Mapping`,
-            // we still need to call this
-            ink_lang::utils::initialize_contract(|_| {})
-        }
-
-        // Grab the number at the caller's AccountID, if it exists
         #[ink(message)]
-        pub fn get(&self, id: u32) -> Student {
+        pub fn get_student(&self, id: u32) -> Student {
             self.list_students.get(&id).unwrap()
         }
+        #[ink(message)]
+        pub fn add_student(&mut self, name: String, age: u32, id: Id) {
+            let caller = Self::env().caller();
+            let student = Student {
+                name,
+                age,
+                id,
+                role: Role::Member,
+                author: caller,
+            };
+            self.list_students.insert(&id, &student);
+            self.list_ids.push(id);
+        }
     }
 }
-#[cfg(test)]
-mod tests {
-    /// Imports all the definitions from the outer scope so we can use them here.
-    use crate::school::Role;
-    use crate::school::School;
-    use crate::school::Student;
-
-    /// Imports `ink_lang` so we can use `#[ink::test]`.
-    use ink_lang as ink;
-
-    //    /// We test if the default constructor does its job.
-    #[ink::test]
-    fn default_works() {
-        let school = School::new(String::from("Huy Duc"), 18, 1);
-        let student = Student {
-            name: "Huy Duc".to_string(),
-            age: 18,
-            id: 1,
-            role: Role::Admin,
-        };
-        assert_eq!(school.get(1), student);
-    }
-
-    //#[ink::test]
-    //fn it_works() {
-    //    let mut school = School::new(false);
-    //    assert_eq!(school.get(), false);
-    //    bank.flip();
-    //    assert_eq!(school.get(), true);
-    //}
-}
+// #[cfg(test)]
+// mod tests {
+//     use crate::school::Role;
+//     use crate::school::School;
+//     use crate::school::Student;
+//     use ink_env::test;
+//     /// Imports all the definitions from the outer scope so we can use them here.
+//     use ink_env::AccountId;
+//     use ink_env::Environment;
+//     use ink_lang as ink;
+//     fn set_caller(sender: AccountId) {
+//         ink_env::test::set_caller::<Environment>(sender);
+//     }
+//     fn default_accounts() -> test::DefaultAccounts<Environment> {
+//         ink_env::test::default_accounts::<Environment>()
+//     }
+//
+//     //    /// We test if the default constructor does its job.
+//     #[ink::test]
+//     fn default_works() {
+//         let school = School::new(String::from("Huy Duc"), 18, 1);
+//     let accounts = default_accounts();
+//        let author = accounts.alice;
+//
+//        let student = Student {
+//            name: "Huy Duc".to_string(),
+//            age: 18,
+//            id: 1,
+//            role: Role::Admin,
+//            author,
+//        };
+//        assert_eq!(school.get(1), student);
+//    }
+//}
+//
+//     //#[ink::test]
+//     //fn it_works() {
+//     //    let mut school = School::new(false);
+//     //    assert_eq!(school.get(), false);
+//     //    bank.flip();
+//     //    assert_eq!(school.get(), true);
+//     //}
+// }
