@@ -78,6 +78,16 @@ mod school {
             self.list_students.insert(&id, &student);
             self.list_ids.push(id);
         }
+        #[ink(message)]
+        pub fn view_all(&self) -> Vec<Student> {
+            let ids = self.list_ids.clone();
+            let mut list_students: Vec<Student> = Vec::new();
+            for id in ids.iter() {
+                let student = self.get_student(*id);
+                list_students.push(student);
+            }
+            list_students
+        }
     }
 }
 // #[cfg(test)]
