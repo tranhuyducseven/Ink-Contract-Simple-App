@@ -46,19 +46,19 @@ mod school {
 
     impl School {
         #[ink(constructor)]
-        pub fn new(name: String, age: u32, id: Id) -> Self {
+        pub fn new(name: String, age: u32) -> Self {
             ink_lang::utils::initialize_contract(|contract: &mut Self| {
                 let caller = Self::env().caller();
                 let admin = Student {
                     name,
                     age,
-                    id,
+                    id: 0,
                     role: Role::Admin,
                     author: caller,
                 };
 
-                contract.list_students.insert(&id, &admin);
-                contract.list_ids.push(id);
+                contract.list_students.insert(&(admin.id), &admin);
+                contract.list_ids.push(0);
             })
         }
         #[ink(message)]
@@ -87,6 +87,12 @@ mod school {
                 list_students.push(student);
             }
             list_students
+        }
+
+        #[ink(message)]
+        pub fn remove_student(&mut self, id: Id) {
+            self.list_students.remove(id);
+            self.list_ids.retain(|&x| x != id)
         }
     }
 }
